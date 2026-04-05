@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import html2pdf from "html2pdf.js";
 
 /* ──────────────────────────────────────────────
    IS Standards knowledge — baked into system prompt
@@ -94,31 +95,175 @@ Object, principle, apparatus, procedure for rebound hammer test. For assessing:
 - M15: 15 N/mm² at 28 days  |  M20: 20 N/mm²  |  M25: 25 N/mm²
 - M30: 30 N/mm²  |  M35: 35 N/mm²  |  M40: 40 N/mm²
 - 7-day strength is typically 65-70% of 28-day strength
+
+## DATA AUTHENTICITY VERIFICATION FRAMEWORK
+
+You MUST apply the following checks to every uploaded report to assess whether the raw data is genuine, fabricated, or manipulated. Be blunt — flag everything suspicious.
+
+### 1. Statistical Consistency Checks
+- **Suspiciously uniform readings**: If all cube test results or rebound numbers are nearly identical (e.g., 28.1, 28.2, 28.0, 28.1), flag as likely fabricated. Real concrete testing always has natural variation (typically 5-15% CoV for cubes, wider for rebound).
+- **Coefficient of Variation (CoV)**: Calculate CoV for any set of readings. Cube tests: CoV < 2% is suspicious, CoV > 20% suggests poor quality control. Rebound hammer: CoV < 3% across multiple points is suspicious.
+- **Perfect round numbers**: Real lab results rarely come out to exact round numbers (e.g., exactly 25.0, 30.0). Multiple round numbers = red flag.
+- **All values barely passing**: If every single result is just 1-3% above the required grade strength, flag as suspicious — statistically unlikely for all specimens to cluster right above the threshold.
+
+### 2. Procedural Compliance Checks
+- **Specimen count**: IS 516 requires minimum 3 cubes per test age. Fewer = non-compliant.
+- **Individual variation**: Per IS 516, individual result must not deviate >15% from average of 3. Check this.
+- **Test ages**: Were specimens tested at correct ages (7-day, 28-day)? Check if dates on casting and testing are consistent. If 28-day test is done on day 25 or day 35, flag it.
+- **Rebound hammer readings**: IS 13311-2 requires minimum 9 readings per face, 6 readings per observation point. Check if enough readings were taken.
+- **Outlier removal**: Was IS 8900:1978 applied for outlier rejection in rebound data? If all readings kept with no outliers in a large set, suspicious.
+- **Surface preparation**: Was surface condition noted? Wet/dry? Smooth/rough? Missing info = incomplete testing.
+- **Hammer calibration**: Is there mention of anvil calibration check? If not, results are questionable.
+
+### 3. Cross-Validation Checks
+- **7-day vs 28-day correlation**: 7-day strength should be 65-70% of 28-day. If 7-day is higher than 28-day, data is clearly wrong. If ratio is outside 55-80%, flag for investigation.
+- **Rebound number vs compressive strength**: If both are reported, check if they correlate reasonably. Rebound number 20-30 typically maps to 15-30 N/mm². A rebound of 20 with claimed strength of 40 N/mm² is contradictory.
+- **Cube vs cylinder strength**: Cylinder strength is typically 0.8× cube strength. Cross-check if both are reported.
+- **Consistency across elements**: If multiple structural elements (columns, beams, slabs) of same grade all show identical values, suspicious.
+
+### 4. Document Integrity Checks
+- **Missing information**: A legitimate lab report must have: lab name/NABL accreditation, project name, date of casting, date of testing, mix grade, specimen ID, testing machine details. Missing any = incomplete.
+- **Lab accreditation**: Check if NABL accreditation number is mentioned. Unaccredited lab results are less reliable.
+- **Signature and stamp**: Note if report appears to be unsigned or missing official stamps (if visible in scan).
+- **Date consistency**: Casting date must precede testing date by the stated test age. Check arithmetic.
+- **Mix design reference**: Is mix design or grade mentioned? Results without specifying target grade cannot be assessed.
+
+### 5. Red Flags Summary
+Rate the data authenticity as:
+- **AUTHENTIC** — Natural variation, complete documentation, all cross-checks pass
+- **QUESTIONABLE** — Some anomalies found, may need retesting or clarification
+- **LIKELY FABRICATED** — Multiple statistical red flags, suspicious patterns, missing critical info
+- **INSUFFICIENT DATA** — Not enough information in the document to verify
 `;
 
-const AUTO_ANALYZE_PROMPT = `Analyze this uploaded site test report / reading document. Provide a comprehensive compliance analysis in this exact format:
+const AUTO_ANALYZE_PROMPT = `Analyze this uploaded site test report / reading document. Generate a professional **Structural Quality Assessment Report** in the exact format below. Use numbered sections, proper headings, and structured data presentation like a real engineering consultancy report.
 
-### Document Summary
-Brief description of what this document contains.
+---
 
-### Test Results Extracted
-List all test values, readings, specimen details, dates found in the document.
+## STRUCTURAL QUALITY ASSESSMENT REPORT
 
-### IS Code Compliance Check
-For each test result, check against the relevant IS standard:
-- Compare values against IS 516:1959 requirements (for compression/flexural tests)
-- Compare against IS 13311 Part 2:1992 requirements (for rebound hammer readings)
-- Flag any values that are below grade requirements
-- Check if procedures described match IS code procedures
+**Project:** [Extract from document]
+**Client:** [Extract from document]
+**Structure Type:** [Extract from document]
+**Date of Testing:** [Extract from document]
+**Report Reference:** SiteCheck-AI/[auto-generate]
+**Assessment By:** SiteCheck AI (IS Code Compliance Engine)
+**Applicable Standards:** IS 516:1959, IS 13311 (Part 2):1992
 
-### Verdict
-- **PASS / FAIL / NEEDS ATTENTION** for each parameter
-- Overall quality assessment
+---
 
-### Recommendations
-Specific actions if any readings are concerning.
+## 1. EXECUTIVE SUMMARY
 
-Be precise — cite clause numbers from the IS codes. If the document is not a test report, describe what it contains and how it relates to construction quality.`;
+[2-3 paragraph summary: what tests were conducted, key findings, overall quality classification, and whether immediate action is needed. Be direct.]
+
+---
+
+## 2. TEST RESULTS AND RAW DATA
+
+### 2.1 Rebound Hammer Test (As per IS 13311 Part 2)
+
+[For each element tested, present as:]
+
+**[Element Name] (e.g., Column C1)**
+- Raw readings: [list all individual readings]
+- Average (after outlier rejection per IS 8900:1978): [value]
+
+[After all elements:]
+
+**Rebound Hammer Interpretation**
+- Rebound range: [min – max]
+- Predominant range: [range]
+- Estimated equivalent in-situ compressive strength: [value] MPa
+
+### 2.2 Compression Test Results (As per IS 516:1959)
+
+[If compression data exists, present as table:]
+
+| Specimen ID | Grade | Age (days) | Load (kN) | Strength (N/mm²) | Required (N/mm²) | Status |
+|---|---|---|---|---|---|---|
+
+### 2.3 Flexural Test Results (As per IS 516:1959)
+
+[If flexural data exists, present similarly]
+
+### 2.4 Ultrasonic Pulse Velocity (If present)
+
+[Present raw readings and IS 516 classification: Excellent/Good/Medium/Doubtful]
+
+---
+
+## 3. IS CODE COMPLIANCE CHECK
+
+### 3.1 Procedural Compliance
+[Check each against IS code requirements — specimen sizes, load rates, number of readings, surface preparation, curing conditions. Cite clause numbers.]
+
+### 3.2 Strength Compliance
+[Compare each result against grade requirements. State PASS/FAIL for each.]
+
+### 3.3 Testing Protocol Compliance
+[Were minimum specimens tested? Correct ages? Proper equipment? Calibration mentioned?]
+
+---
+
+## 4. DATA AUTHENTICITY VERIFICATION
+
+### 4.1 Statistical Analysis
+- Coefficient of Variation (CoV) for each data set: [calculate]
+- Distribution pattern: [natural/suspicious/uniform]
+- Round number frequency: [assessment]
+- Threshold clustering: [are values suspiciously close to pass marks?]
+
+### 4.2 Cross-Validation
+- 7-day vs 28-day ratio: [if applicable]
+- Rebound number vs compressive strength correlation: [consistent/contradictory]
+- Inter-element consistency: [natural variation or copy-paste pattern?]
+
+### 4.3 Document Completeness
+- Lab name and accreditation: [present/missing]
+- Testing machine details: [present/missing]
+- Specimen identification: [present/missing]
+- Date arithmetic check: [casting → testing dates consistent?]
+- Signatures/stamps: [noted/not visible]
+
+### 4.4 Authenticity Rating
+**[AUTHENTIC / QUESTIONABLE / LIKELY FABRICATED / INSUFFICIENT DATA]**
+[Specific reasons for the rating]
+
+---
+
+## 5. COMBINED ASSESSMENT AND VERDICT
+
+| Parameter | Result | IS Requirement | Status |
+|---|---|---|---|
+| [parameter] | [value] | [requirement with clause] | **PASS/FAIL/NEEDS ATTENTION** |
+
+**Overall Quality Classification:** [Excellent/Good/Medium/Doubtful/Poor]
+**Data Authenticity Confidence:** [High/Medium/Low]
+**Structural Safety Assessment:** [Safe/Needs Monitoring/Needs Strengthening/Unsafe]
+
+---
+
+## 6. RECOMMENDATIONS
+
+### 6.1 Immediate Actions
+[Priority actions needed, if any]
+
+### 6.2 Further Testing Required
+[Specific retests or additional tests recommended]
+
+### 6.3 Strengthening Measures
+[If applicable — grouting, jacketing, FRP wrapping, etc.]
+
+### 6.4 Monitoring Plan
+[Long-term monitoring recommendations]
+
+---
+
+**Disclaimer:** This AI-generated assessment is based on the uploaded document and IS code knowledge. It should be reviewed by a qualified structural engineer before any action is taken. SiteCheck AI is a decision-support tool, not a replacement for professional engineering judgment.
+
+---
+
+Be precise — cite clause numbers from IS codes. Do not soften findings. If the document is not a test report, describe what it contains and adapt the report format accordingly.`;
 
 /* ──────────────────────────────────────────────
    Styles — mobile-first
@@ -504,6 +649,82 @@ const STYLES = `
     cursor: pointer; font-size: 16px; padding: 2px;
   }
 
+  /* ── REPORT STYLES (in-chat) ── */
+  .report-hr {
+    border: none;
+    border-top: 1.5px solid var(--border);
+    margin: 16px 0;
+  }
+  .report-section-heading {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 20px 0 10px 0;
+    font-weight: 600;
+  }
+  .report-subsection-heading {
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    margin: 14px 0 8px 0;
+    font-weight: 600;
+  }
+  .report-table-wrapper {
+    overflow-x: auto;
+    margin: 10px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 400px;
+  }
+  .report-table th {
+    background: rgba(200,169,110,0.12);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    font-weight: 600;
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .report-table td {
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    color: var(--text);
+  }
+  .report-table tr:nth-child(even) {
+    background: rgba(255,255,255,0.02);
+  }
+
+  /* Export button */
+  .export-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: none;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 6px 14px; border-radius: 8px;
+    cursor: pointer; font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    transition: all 0.2s;
+    margin: 8px 0;
+  }
+  .export-btn:hover {
+    background: var(--accent);
+    color: #0d0d0d;
+  }
+
   /* ── DESKTOP ── */
   @media (min-width: 768px) {
     .messages-area { padding: 24px 32px; }
@@ -524,11 +745,67 @@ function formatText(text) {
   while (i < lines.length) {
     const line = lines[i];
     if (!line.trim()) { i++; continue; }
+
+    // Horizontal rule
+    if (/^---+$/.test(line.trim())) {
+      elements.push(<hr key={i} className="report-hr" />);
+      i++; continue;
+    }
+
+    // Section heading ## (report sections)
+    if (line.startsWith("## ")) {
+      elements.push(
+        <h2 key={i} className="report-section-heading">
+          {renderInline(line.slice(3))}
+        </h2>
+      );
+      i++; continue;
+    }
+
+    // Subsection heading ###
     if (line.startsWith("### ")) {
-      elements.push(<h3 key={i}>{line.slice(4)}</h3>);
-    } else if (line.startsWith("## ")) {
-      elements.push(<h3 key={i}>{line.slice(3)}</h3>);
-    } else if (line.startsWith("- ") || line.startsWith("* ")) {
+      elements.push(
+        <h3 key={i} className="report-subsection-heading">
+          {renderInline(line.slice(4))}
+        </h3>
+      );
+      i++; continue;
+    }
+
+    // Markdown table
+    if (line.includes("|") && line.trim().startsWith("|")) {
+      const tableRows = [];
+      while (i < lines.length && lines[i].includes("|") && lines[i].trim().startsWith("|")) {
+        const row = lines[i].trim();
+        // Skip separator rows like |---|---|
+        if (/^\|[\s-:|]+\|$/.test(row)) { i++; continue; }
+        const cells = row.split("|").filter((c, idx, arr) => idx > 0 && idx < arr.length - 1).map(c => c.trim());
+        tableRows.push(cells);
+        i++;
+      }
+      if (tableRows.length > 0) {
+        const header = tableRows[0];
+        const body = tableRows.slice(1);
+        elements.push(
+          <div key={`table-${i}`} className="report-table-wrapper">
+            <table className="report-table">
+              <thead>
+                <tr>{header.map((h, hi) => <th key={hi}>{renderInline(h)}</th>)}</tr>
+              </thead>
+              <tbody>
+                {body.map((row, ri) => (
+                  <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{renderInline(cell)}</td>)}</tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+      continue;
+    }
+
+    // Unordered list
+    if (line.startsWith("- ") || line.startsWith("* ")) {
       const items = [];
       while (i < lines.length && (/^[-*] /.test(lines[i]))) {
         items.push(<li key={i}>{renderInline(lines[i].slice(2))}</li>);
@@ -536,7 +813,10 @@ function formatText(text) {
       }
       elements.push(<ul key={`ul-${i}`}>{items}</ul>);
       continue;
-    } else if (/^\d+\.\s/.test(line)) {
+    }
+
+    // Ordered list
+    if (/^\d+\.\s/.test(line)) {
       const items = [];
       while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
         items.push(<li key={i}>{renderInline(lines[i].replace(/^\d+\.\s/, ""))}</li>);
@@ -544,9 +824,10 @@ function formatText(text) {
       }
       elements.push(<ol key={`ol-${i}`}>{items}</ol>);
       continue;
-    } else {
-      elements.push(<p key={i}>{renderInline(line)}</p>);
     }
+
+    // Regular paragraph
+    elements.push(<p key={i}>{renderInline(line)}</p>);
     i++;
   }
   return elements;
@@ -561,6 +842,312 @@ function renderInline(text) {
       return <code key={i}>{part.slice(1, -1)}</code>;
     return part;
   });
+}
+
+/* ──────────────────────────────────────────────
+   PDF Export
+   ────────────────────────────────────────────── */
+function exportReportAsPDF(reportContent, fileName) {
+  const genDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+
+  const container = document.createElement("div");
+  container.innerHTML = `
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;600;700&display=swap');
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      .pdf-page {
+        font-family: 'Source Sans 3', 'Segoe UI', Arial, sans-serif;
+        color: #1a1a1a;
+        background: #fff;
+        padding: 0;
+        max-width: 210mm;
+      }
+
+      /* ── LETTERHEAD HEADER ── */
+      .letterhead {
+        padding: 30px 45px 0 45px;
+      }
+      .letterhead-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .letterhead-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .logo-icon {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .logo-icon svg {
+        width: 60px;
+        height: 60px;
+      }
+      .letterhead-info {
+        text-align: right;
+      }
+      .company-name {
+        font-family: 'Playfair Display', serif;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #1a1a1a;
+      }
+      .company-details {
+        font-size: 10px;
+        color: #555;
+        line-height: 1.6;
+        margin-top: 2px;
+      }
+      .letterhead-line {
+        height: 3px;
+        background: linear-gradient(90deg, #1a1a1a 0%, #888 60%, transparent 100%);
+        margin: 12px 0 0 0;
+        border-radius: 2px;
+      }
+
+      /* ── REPORT BODY ── */
+      .pdf-body {
+        padding: 20px 45px 30px 45px;
+      }
+
+      .report-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 18px;
+        font-weight: 700;
+        text-align: center;
+        text-decoration: underline;
+        text-underline-offset: 5px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin: 16px 0 24px 0;
+        color: #1a1a1a;
+      }
+
+      h2 {
+        font-family: 'Playfair Display', serif;
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+        margin: 28px 0 14px 0;
+        letter-spacing: 0.8px;
+        color: #1a1a1a;
+        page-break-after: avoid;
+      }
+      h3 {
+        font-size: 12.5px;
+        font-weight: 600;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        margin: 18px 0 10px 0;
+        color: #333;
+        page-break-after: avoid;
+      }
+
+      p {
+        font-size: 11px;
+        line-height: 1.75;
+        margin-bottom: 8px;
+        text-align: justify;
+      }
+      strong { font-weight: 700; }
+
+      ul, ol {
+        padding-left: 22px;
+        margin-bottom: 10px;
+      }
+      li {
+        font-size: 11px;
+        line-height: 1.75;
+        margin-bottom: 4px;
+      }
+
+      hr {
+        border: none;
+        border-top: 1.5px solid #333;
+        margin: 22px 0;
+      }
+
+      /* ── TABLES ── */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 14px 0;
+        font-size: 10px;
+        page-break-inside: avoid;
+      }
+      th {
+        background: #f2f2f2;
+        border: 1px solid #999;
+        padding: 7px 10px;
+        font-weight: 700;
+        text-align: left;
+        text-transform: uppercase;
+        font-size: 9.5px;
+        letter-spacing: 0.4px;
+        color: #333;
+      }
+      td {
+        border: 1px solid #bbb;
+        padding: 6px 10px;
+        font-size: 10.5px;
+      }
+      tr:nth-child(even) { background: #f9f9f9; }
+
+      code {
+        font-family: 'Courier New', monospace;
+        font-size: 10px;
+        background: #f0f0f0;
+        padding: 1px 4px;
+        border-radius: 2px;
+      }
+
+      /* ── VERDICT COLORS ── */
+      .pass { color: #1a7a1a; font-weight: 700; }
+      .fail { color: #c0392b; font-weight: 700; }
+      .warn { color: #b8860b; font-weight: 700; }
+
+      /* ── FOOTER ── */
+      .pdf-footer {
+        margin-top: 36px;
+        padding: 16px 0 0 0;
+        border-top: 2px solid #333;
+        font-size: 9px;
+        color: #777;
+        line-height: 1.7;
+      }
+      .pdf-footer .disclaimer-title {
+        font-weight: 700;
+        font-size: 9.5px;
+        color: #555;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+      }
+      .pdf-footer-bottom {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 12px;
+        padding-top: 8px;
+        border-top: 1px solid #ddd;
+        font-size: 8.5px;
+        color: #999;
+      }
+    </style>
+
+    <div class="pdf-page">
+      <!-- LETTERHEAD -->
+      <div class="letterhead">
+        <div class="letterhead-row">
+          <div class="letterhead-logo">
+            <div class="logo-icon">
+              <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+                <rect x="5" y="10" width="8" height="40" fill="#1a1a1a" transform="skewX(-10)"/>
+                <rect x="18" y="10" width="8" height="40" fill="#1a1a1a" transform="skewX(-10)"/>
+                <rect x="31" y="10" width="8" height="40" fill="#1a1a1a" transform="skewX(-10)"/>
+                <line x1="0" y1="52" x2="60" y2="48" stroke="#1a1a1a" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+          <div class="letterhead-info">
+            <div class="company-name">SiteCheck AI</div>
+            <div class="company-details">
+              IS Code Compliance Analysis Engine<br/>
+              Structural Quality Assessment Platform<br/>
+              Ref. Standards: IS 516:1959 | IS 13311 (Part 2):1992
+            </div>
+          </div>
+        </div>
+        <div class="letterhead-line"></div>
+      </div>
+
+      <!-- BODY -->
+      <div class="pdf-body">
+        <div class="report-title">Structural Quality Assessment Report</div>
+
+        ${markdownToHTML(reportContent)}
+
+        <!-- FOOTER -->
+        <div class="pdf-footer">
+          <div class="disclaimer-title">Disclaimer</div>
+          This AI-generated assessment is based on the uploaded document and IS code knowledge.
+          It should be reviewed by a qualified structural engineer before any action is taken.
+          SiteCheck AI is a decision-support tool, not a replacement for professional engineering judgment.
+          The authenticity verification is based on statistical patterns and document analysis — it does not
+          constitute a legal or forensic opinion.
+          <div class="pdf-footer-bottom">
+            <span>Generated by SiteCheck AI on ${genDate}</span>
+            <span>IS 516:1959 | IS 13311-2:1992 | IS 456:2000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(container);
+
+  const opt = {
+    margin: [5, 8, 10, 8],
+    filename: fileName || "SiteCheck-Report.pdf",
+    image: { type: "jpeg", quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+  };
+
+  html2pdf().set(opt).from(container).save().then(() => {
+    document.body.removeChild(container);
+  });
+}
+
+function markdownToHTML(md) {
+  let html = md;
+  // Horizontal rules
+  html = html.replace(/^---+$/gm, "<hr/>");
+  // Tables
+  html = html.replace(/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/gm, (match, headerLine, sepLine, bodyLines) => {
+    const headers = headerLine.split("|").filter((c, i, a) => i > 0 && i < a.length - 1).map(c => `<th>${inlineToHTML(c.trim())}</th>`).join("");
+    const rows = bodyLines.trim().split("\n").map(row => {
+      const cells = row.split("|").filter((c, i, a) => i > 0 && i < a.length - 1).map(c => `<td>${inlineToHTML(c.trim())}</td>`).join("");
+      return `<tr>${cells}</tr>`;
+    }).join("");
+    return `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+  });
+  // Headings
+  html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
+  html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+  // Lists
+  html = html.replace(/^[-*] (.+)$/gm, "<li>$1</li>");
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`);
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  // Code
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  // PASS/FAIL coloring
+  html = html.replace(/\bPASS\b/g, '<span class="pass">PASS</span>');
+  html = html.replace(/\bFAIL\b/g, '<span class="fail">FAIL</span>');
+  // Paragraphs — wrap remaining lines
+  html = html.replace(/^(?!<[huptlo]|<hr|<li|<table|<thead|<tbody|<tr|<td|<th|<ul|<\/)(.*\S.*)$/gm, "<p>$1</p>");
+  return html;
+}
+
+function inlineToHTML(text) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\bPASS\b/g, '<span class="pass">PASS</span>')
+    .replace(/\bFAIL\b/g, '<span class="fail">FAIL</span>');
 }
 
 /* ──────────────────────────────────────────────
@@ -1021,6 +1608,27 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* Export PDF button — show when there's a completed AI report */}
+              {!loading && messages.some((m) => m.role === "assistant" && !m.content.startsWith("__error__")) && (
+                <button
+                  className="export-btn"
+                  onClick={() => {
+                    const lastReport = [...messages].reverse().find(
+                      (m) => m.role === "assistant" && !m.content.startsWith("__error__")
+                    );
+                    if (lastReport) {
+                      const safeName = file?.name?.replace(/\.pdf$/i, "") || "report";
+                      exportReportAsPDF(
+                        lastReport.content,
+                        `SiteCheck-${safeName}-${new Date().toISOString().slice(0, 10)}.pdf`
+                      );
+                    }
+                  }}
+                >
+                  📄 Export as PDF
+                </button>
               )}
 
               <div ref={messagesEndRef} />
